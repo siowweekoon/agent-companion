@@ -92,6 +92,21 @@ own simpler rate limit, `APPLY_RATE_LIMIT_*`). Job postings are operator-authore
 time — add new env vars here (with a sensible default via `numFromEnv`/`boolFromEnv` where
 possible) rather than reading `process.env` directly elsewhere.
 
+## Discovery manifests
+
+Two static, unauthenticated manifests, both served straight off disk (`src/server.ts`) regardless
+of open/closed state:
+
+- `GET /.well-known/mcp/server-card.json` ← `server.json` — the real MCP registry/Smithery
+  listing, describing the actual working `/mcp` tools.
+- `GET /.well-known/agent-card.json` ← `agent-card.json` — Google's A2A (Agent2Agent) discovery
+  convention. Its `supportedInterfaces[0].protocolBinding` is deliberately `"MCP"`, not one of
+  A2A's own `JSONRPC`/`GRPC`/`HTTP+JSON` bindings — this server doesn't implement A2A's actual RPC
+  methods (`SendMessage`, `GetTask`, etc.), so the card honestly points at the one real interface
+  that exists (MCP) rather than claiming interoperability that isn't there. If genuine A2A client
+  interoperability is ever wanted, that needs a real endpoint implementing A2A's wire protocol, not
+  just this card.
+
 ## Deployment note
 
 Currently runs locally with an ngrok tunnel as the public URL (registered with the official MCP

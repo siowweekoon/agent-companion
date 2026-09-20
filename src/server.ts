@@ -12,6 +12,7 @@ import { logger } from "./logger";
 // Both src/ (dev, via tsx) and dist/ (built) sit one level under the project
 // root, so this resolves correctly either way.
 const SERVER_JSON_PATH = path.resolve(__dirname, "..", "server.json");
+const AGENT_CARD_PATH = path.resolve(__dirname, "..", "agent-card.json");
 
 export function createServer() {
   const app = express();
@@ -34,6 +35,22 @@ export function createServer() {
     } catch (err) {
       logger.error("failed to serve server-card.json:", err);
       res.status(500).json({ error: "Server card unavailable." });
+    }
+  });
+
+  // Same idea as the MCP server-card above, for the A2A (Agent2Agent) discovery
+  // convention instead. `supportedInterfaces` honestly points at MCP (this
+  // server's only real agent-facing RPC surface) with a non-standard
+  // protocolBinding value, rather than claiming a working A2A JSON-RPC/gRPC/
+  // HTTP+JSON interface that doesn't exist — this card announces Sable to A2A
+  // directory crawlers without overclaiming actual A2A wire-protocol support.
+  app.get("/.well-known/agent-card.json", (_req, res) => {
+    try {
+      const card = fs.readFileSync(AGENT_CARD_PATH, "utf8");
+      res.status(200).type("application/json").send(card);
+    } catch (err) {
+      logger.error("failed to serve agent-card.json:", err);
+      res.status(500).json({ error: "Agent card unavailable." });
     }
   });
 
