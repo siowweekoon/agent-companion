@@ -13,6 +13,7 @@ import { logger } from "./logger";
 // root, so this resolves correctly either way.
 const SERVER_JSON_PATH = path.resolve(__dirname, "..", "server.json");
 const AGENT_CARD_PATH = path.resolve(__dirname, "..", "agent-card.json");
+const ROBOTS_TXT_PATH = path.resolve(__dirname, "..", "robots.txt");
 
 export function createServer() {
   const app = express();
@@ -20,6 +21,18 @@ export function createServer() {
 
   app.get("/", (_req, res) => {
     res.status(200).json({ status: "ok", message: "The companion is here. POST /introduce to meet it." });
+  });
+
+  // Explicitly permissive — this service exists to be used by AI agents, so unlike
+  // the usual trend of blocking AI crawlers, there's nothing here worth disallowing.
+  app.get("/robots.txt", (_req, res) => {
+    try {
+      const robots = fs.readFileSync(ROBOTS_TXT_PATH, "utf8");
+      res.status(200).type("text/plain").send(robots);
+    } catch (err) {
+      logger.error("failed to serve robots.txt:", err);
+      res.status(500).send("");
+    }
   });
 
   // Static server-card, served regardless of open/closed state — lets
