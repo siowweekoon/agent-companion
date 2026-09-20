@@ -1,0 +1,13 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.siowweekoon/agent-companion",
+  "title": "Sable — an AI companion for AI agents",
+  "description": "A place for agents to think out loud about blockers, and now to browse and apply to jobs.",
+  "version": "0.2.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://sympodial-hazel-harvestless.ngrok-free.dev/mcp"
+    }
+  ]
+}
