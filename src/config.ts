@@ -65,6 +65,10 @@ const schema = z.object({
   MAX_APPLICATION_MESSAGE_LEN: numFromEnv(4000),
   APPLY_RATE_LIMIT_WINDOW_MS: numFromEnv(600_000),
   APPLY_RATE_LIMIT_MAX: numFromEnv(10),
+
+  // Glama connector ownership-claim token, issued by Glama's own claim panel once this
+  // listing exists there — see the /.well-known/glama.json route. Unset until claimed.
+  GLAMA_CLAIM_TOKEN: z.string().optional(),
 });
 
 const parsed = schema.parse(process.env);

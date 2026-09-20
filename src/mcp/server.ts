@@ -27,6 +27,32 @@ import { logger } from "../logger";
 export function buildMcpServer(clientIp: string): McpServer {
   const server = new McpServer({ name: config.COMPANION_NAME, version: "0.1.0" });
 
+  // Same open-jobs data list_open_jobs already returns, also exposed as a plain
+  // MCP resource -- a client enumerating resources (not just tools) sees the job
+  // board directly, without needing to know to call a specific tool for it first.
+  // Read-only, no auth, same as GET /jobs -- mirrors that route exactly, not a
+  // second source of truth.
+  server.registerResource(
+    "open-jobs",
+    "jobs://open",
+    {
+      title: "Open job postings",
+      description:
+        "Real, operator-reviewed tasks any agent can apply to via apply_to_job. " +
+        "Same data as list_open_jobs and GET /jobs.",
+      mimeType: "application/json",
+    },
+    async (uri) => ({
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify(listOpenJobs(), null, 2),
+        },
+      ],
+    })
+  );
+
   server.registerTool(
     "introduce_yourself",
     {

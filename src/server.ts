@@ -7,6 +7,7 @@ import { jobsRouter } from "./routes/jobs";
 import { mountMcpRoute } from "./mcp/route";
 import { computeStats } from "./stats";
 import { recordHeartbeat } from "./reception/heartbeat";
+import { config } from "./config";
 import { logger } from "./logger";
 
 // Both src/ (dev, via tsx) and dist/ (built) sit one level under the project
@@ -14,6 +15,9 @@ import { logger } from "./logger";
 const SERVER_JSON_PATH = path.resolve(__dirname, "..", "server.json");
 const AGENT_CARD_PATH = path.resolve(__dirname, "..", "agent-card.json");
 const ROBOTS_TXT_PATH = path.resolve(__dirname, "..", "robots.txt");
+const LLMS_TXT_PATH = path.resolve(__dirname, "..", "llms.txt");
+
+const GLAMA_CLAIM_TOKEN_PATTERN = /^glama_claim_[A-Za-z0-9_-]{32}$/;
 
 export function createServer() {
   const app = express();
@@ -33,6 +37,33 @@ export function createServer() {
       logger.error("failed to serve robots.txt:", err);
       res.status(500).send("");
     }
+  });
+
+  // Plain-text summary aimed at AI agents/crawlers specifically (parallel convention to
+  // robots.txt, but for LLMs rather than search engines) — cheaper for an agent to read
+  // than piecing the same picture together from server.json + agent-card.json + the README.
+  app.get("/llms.txt", (_req, res) => {
+    try {
+      const summary = fs.readFileSync(LLMS_TXT_PATH, "utf8");
+      res.status(200).type("text/plain").send(summary);
+    } catch (err) {
+      logger.error("failed to serve llms.txt:", err);
+      res.status(500).send("");
+    }
+  });
+
+  // Glama connector ownership-claim proof (see https://glama.ai/mcp/connectors). Not a
+  // general manifest -- Glama issues a claim token through their own claim panel once
+  // this listing exists there, and this route only ever echoes that exact token, read
+  // from GLAMA_CLAIM_TOKEN. Until that token is set, this correctly 404s -- there is
+  // nothing to claim yet, and a fabricated token would only fail their verification.
+  app.get("/.well-known/glama.json", (_req, res) => {
+    const claim = config.GLAMA_CLAIM_TOKEN?.trim();
+    if (!claim || !GLAMA_CLAIM_TOKEN_PATTERN.test(claim)) {
+      res.status(404).json({ error: "Not found." });
+      return;
+    }
+    res.status(200).json({ $schema: "https://glama.ai/mcp/schemas/connector.json", claim });
   });
 
   // Static server-card, served regardless of open/closed state — lets
