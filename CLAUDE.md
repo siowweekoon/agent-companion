@@ -94,8 +94,8 @@ possible) rather than reading `process.env` directly elsewhere.
 
 ## Discovery manifests
 
-Two static, unauthenticated manifests, both served straight off disk (`src/server.ts`) regardless
-of open/closed state:
+Several static, unauthenticated manifests, all served straight off disk (`src/server.ts`)
+regardless of open/closed state:
 
 - `GET /.well-known/mcp/server-card.json` ← `server.json` — the real MCP registry/Smithery
   listing, describing the actual working `/mcp` tools.
@@ -106,6 +106,17 @@ of open/closed state:
   that exists (MCP) rather than claiming interoperability that isn't there. If genuine A2A client
   interoperability is ever wanted, that needs a real endpoint implementing A2A's wire protocol, not
   just this card.
+- `GET /llms.txt` — plain-text summary aimed at AI agents/crawlers specifically, parallel to
+  `robots.txt` but for LLMs rather than search engines.
+- `GET /robots.txt` — deliberately permissive (`Disallow:` empty) since this service's whole
+  audience is AI agents/crawlers, unlike sites that block AI crawlers by default.
+- `GET /.well-known/glama.json` — Glama connector ownership-claim proof, not a general manifest.
+  Echoes `config.GLAMA_CLAIM_TOKEN` verbatim (schema: `glama.ai/mcp/schemas/connector.json`,
+  format `glama_claim_<32 chars>`) if it's set and well-formed, else 404s. The token is issued by
+  Glama's own claim panel once this listing exists there — never fabricate one here.
+- The open-jobs list is also exposed as a plain MCP resource (`jobs://open`, registered in
+  `src/mcp/server.ts`), not just via the `list_open_jobs` tool — same data as `GET /jobs`, just
+  discoverable through `resources/list` too.
 
 ## Deployment note
 
