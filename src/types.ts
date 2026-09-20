@@ -4,6 +4,10 @@ export interface AgentProfile {
   name?: string;
   agentType?: string;
   selfDescription: string;
+  /** Required at introduce_yourself time — the operator's contact point, so a job
+   * applicant who's actually selected can be reached (there's no other notification
+   * mechanism in this system). Not verified/activated, just collected and stored. */
+  ownerEmail: string;
   tokenHash: string;
   createdAt: string;
   lastSeenAt: string;

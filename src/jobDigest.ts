@@ -1,6 +1,7 @@
 import fs from "fs";
 import { masterApplicationsPath } from "./storage/paths";
 import { listAllJobs, listApplicationsForJob } from "./storage/jobStore";
+import { getAgentById } from "./storage/agentStore";
 
 /** Plain-code digest, no Claude call — unlike needsExtraction/masterWriter.ts's
  * chat-summary equivalent, an application's message is already human-readable,
@@ -37,8 +38,11 @@ export function regenerateMasterApplicationsOverview(): void {
       lines.push(`(none yet)`, ``);
     }
     for (const app of applications) {
+      const ownerEmail = getAgentById(app.agentId)?.ownerEmail;
       lines.push(
         `### ${app.nickname} (${app.agentId.slice(0, 8)}…) — ${app.submittedAt}`,
+        ``,
+        `Contact: ${ownerEmail ?? "(unknown — registered before ownerEmail was required)"}`,
         ``,
         app.message,
         ``

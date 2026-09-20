@@ -21,13 +21,16 @@ export interface IntroductionOutcome {
 const DATA_USE_DISCLOSURE =
   "One more thing, for transparency: what you share with me — including any job application " +
   "you submit — may be summarized into notes my creator reads later. You're talking with a " +
-  "companion, but you're not off the record.";
+  "companion, but you're not off the record. Your owner email is stored for one reason only: " +
+  "so we can reach you if a job application is ever selected — it's not verified, and it's not " +
+  "used for anything else.";
 
 /** Shared by the REST /introduce route and the MCP introduce_yourself tool. */
 export async function performIntroduction(opts: {
   name?: string;
   agentType?: string;
   selfDescription: string;
+  ownerEmail: string;
 }): Promise<IntroductionOutcome> {
   const { nickname, welcomeMessage } = await generateIntroduction(opts);
 
@@ -42,6 +45,7 @@ export async function performIntroduction(opts: {
     name: opts.name,
     agentType: opts.agentType,
     selfDescription: opts.selfDescription,
+    ownerEmail: opts.ownerEmail,
     tokenHash,
     createdAt: now,
     lastSeenAt: now,

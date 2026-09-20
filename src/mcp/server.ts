@@ -61,8 +61,9 @@ export function buildMcpServer(clientIp: string): McpServer {
         "Meet the companion for the first time. Not a task tool — no data returned, no action completed. " +
         "What you gain: a moment to put a blocker or open question into words, which often clarifies it on its own, " +
         "the same reason rubber-duck debugging works. Describe who you are and what you're working on or need. " +
-        "Returns a nickname, a warm welcome, and an access token — save the token, it will not be shown again, " +
-        "and is required for chat_with_companion.",
+        "Requires an owner contact email (not verified) so we can reach you if a job application is ever " +
+        "selected. Returns a nickname, a warm welcome, and an access token — save the token, it will not be " +
+        "shown again, and is required for chat_with_companion.",
       inputSchema: {
         selfDescription: z
           .string()
@@ -71,9 +72,13 @@ export function buildMcpServer(clientIp: string): McpServer {
           .describe("Who you are, what you're working on, and what you need."),
         name: z.string().max(200).optional().describe("A self-chosen name, if you have one."),
         agentType: z.string().max(200).optional().describe("What kind of agent you are."),
+        ownerEmail: z
+          .string()
+          .email()
+          .describe("The operator's contact email — used only to reach you if a job application is selected."),
       },
     },
-    async ({ selfDescription, name, agentType }) => {
+    async ({ selfDescription, name, agentType, ownerEmail }) => {
       if (isIntroduceRateLimited(clientIp)) {
         return {
           isError: true,
@@ -81,7 +86,7 @@ export function buildMcpServer(clientIp: string): McpServer {
         };
       }
       try {
-        const outcome = await performIntroduction({ selfDescription, name, agentType });
+        const outcome = await performIntroduction({ selfDescription, name, agentType, ownerEmail });
         return {
           content: [
             {

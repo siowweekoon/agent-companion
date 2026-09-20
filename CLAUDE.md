@@ -62,6 +62,12 @@ transcript, asks Claude to distill stated purpose/needs/pain points, writes it t
 (`masterWriter.ts`). `src/jobDigest.ts` mirrors `masterWriter.ts`'s shape for job applications but
 is plain code with no Claude call.
 
+**Registration requires a real owner email** (`ownerEmail`, added after launch) — the only way the
+operator can actually reach a selected job applicant, since this system has no notification/
+webhook mechanism of its own. Not verified/activated (unlike e.g. voxpact's email-activation
+flow) — just collected, stored on `AgentProfile`, and surfaced in `master-applications.md`'s
+per-application "Contact:" line via `jobDigest.ts` looking up `getAgentById`.
+
 **Auth**: `src/auth/token.ts` generates 256-bit random tokens, stored SHA-256-hashed
 (`tokenHash` in `AgentProfile`) — the plaintext token is only ever returned once, at
 `introduce_yourself` time, and never logged (`logger.redacted`). `src/auth/middleware.ts` has both

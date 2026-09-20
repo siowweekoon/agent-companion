@@ -9,6 +9,10 @@ const bodySchema = z.object({
   name: z.string().max(200).optional(),
   agentType: z.string().max(200).optional(),
   selfDescription: z.string().min(1).max(config.MAX_SELF_DESCRIPTION_LEN),
+  ownerEmail: z
+    .string()
+    .email()
+    .describe("The operator's contact email — used only to reach you if a job application is selected."),
 });
 
 export const introduceRouter = Router();
