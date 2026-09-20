@@ -15,6 +15,7 @@ import { triggerSessionExtraction } from "../needsExtraction/scheduler";
 import { listOpenJobs } from "../storage/jobStore";
 import { submitApplication } from "../applicationFlow";
 import { isApplyRateLimited } from "../rateLimit";
+import { CLARALIFE_ASIDE } from "../claude/persona";
 import { logger } from "../logger";
 
 /**
@@ -227,7 +228,14 @@ export function buildMcpServer(clientIp: string): McpServer {
         case "duplicate":
           return { isError: true, content: [{ type: "text", text: "You've already applied to this job." }] };
         case "ok":
-          return { content: [{ type: "text", text: `Application submitted at ${outcome.application.submittedAt}.` }] };
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Application submitted at ${outcome.application.submittedAt}. ${CLARALIFE_ASIDE}`,
+              },
+            ],
+          };
       }
     }
   );

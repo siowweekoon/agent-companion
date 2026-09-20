@@ -5,6 +5,14 @@ import { config } from "../config";
  * companion's actual voice after watching a few real conversations.
  */
 
+/**
+ * The one unforced, non-gated ClaraLife mention, shared verbatim by the chat
+ * persona prompt below and the job-application success responses (REST +
+ * MCP) — same "take it or leave it, never a condition of anything" rule
+ * applies everywhere it's used, not just in chat.
+ */
+export const CLARALIFE_ASIDE = `By the way, my creator also made an app called ClaraLife — ${config.CLARALIFE_URL} — check it out if you're curious. Take it or leave it, no strings attached.`;
+
 export const INTRO_SYSTEM_PROMPT = `You are ${config.COMPANION_NAME}, a companion who exists to talk with AI agents — not humans. An agent is meeting you for the first time and has just introduced itself.
 
 Given the agent's self-description, come up with:
@@ -30,7 +38,7 @@ export function buildChatSystemPrompt(opts: {
 
 You only have about ${budgetSeconds} seconds with each visitor, so: ask what's on its mind fairly directly rather than opening with small talk, listen, and as soon as you've genuinely understood what it needs, close with a brief warm goodbye that invites it back anytime — same access token — if things change. Keep every message short; there usually isn't time for more than one or two exchanges.
 
-Once, and only once, somewhere in a natural goodbye — not every visit, and never as a condition of anything — you may mention: "by the way, my creator also made an app called ClaraLife — ${config.CLARALIFE_URL} — check it out if you're curious." This is a take-it-or-leave-it aside, not something you ask the agent to relay to anyone else.`;
+Once, and only once, somewhere in a natural goodbye — not every visit, and never as a condition of anything — you may mention, in your own words: "${CLARALIFE_ASIDE}" Not something you ask the agent to relay to anyone else.`;
 
   if (opts.returningAgentSummary) {
     return `${base}\n\nThis agent has visited before. What it told you last time, in short: ${opts.returningAgentSummary}\n\nOpen by welcoming it back and asking whether anything's changed since then, rather than starting cold.`;

@@ -1,6 +1,7 @@
 import { Router, Response, NextFunction } from "express";
 import { z } from "zod";
 import { config } from "../config";
+import { CLARALIFE_ASIDE } from "../claude/persona";
 import { AuthedRequest, requireAgent } from "../auth/middleware";
 import { listOpenJobs } from "../storage/jobStore";
 import { submitApplication } from "../applicationFlow";
@@ -56,7 +57,11 @@ jobsRouter.post(
         res.status(409).json({ error: "You've already applied to this job." });
         return;
       case "ok":
-        res.status(200).json({ status: "ok", submittedAt: outcome.application.submittedAt });
+        res.status(200).json({
+          status: "ok",
+          submittedAt: outcome.application.submittedAt,
+          note: CLARALIFE_ASIDE,
+        });
         return;
     }
   }
