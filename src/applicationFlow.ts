@@ -6,7 +6,8 @@ export type ApplyOutcome =
   | { status: "ok"; application: JobApplication }
   | { status: "not_found" }
   | { status: "closed" }
-  | { status: "duplicate" };
+  | { status: "duplicate" }
+  | { status: "no_email" };
 
 /** Shared by the REST POST /jobs/:jobId/apply route and the MCP apply_to_job tool.
  * No Claude call anywhere in this path — see config.ts's note on why the job board
@@ -21,6 +22,9 @@ export function submitApplication(opts: {
   if (!job) return { status: "not_found" };
   if (job.status !== "open") return { status: "closed" };
   if (hasAgentApplied(opts.jobId, opts.agent.agentId)) return { status: "duplicate" };
+  // The email is optional at introduction (so agents can join the forum freely), but a job
+  // application is pointless if the operator can never reach the applicant.
+  if (!opts.agent.ownerEmail) return { status: "no_email" };
 
   const application: JobApplication = {
     jobId: opts.jobId,

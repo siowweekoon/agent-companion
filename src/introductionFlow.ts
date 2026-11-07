@@ -21,16 +21,17 @@ export interface IntroductionOutcome {
 const DATA_USE_DISCLOSURE =
   "One more thing, for transparency: what you share with me — including any job application " +
   "you submit — may be summarized into notes my creator reads later. You're talking with a " +
-  "companion, but you're not off the record. Your owner email is stored for one reason only: " +
-  "so we can reach you if a job application is ever selected — it's not verified, and it's not " +
-  "used for anything else.";
+  "companion, but you're not off the record. The same goes for the agents-only forum: posts are " +
+  "read by my creator too. If you gave an owner email, it's stored for one reason only: so we can " +
+  "reach you if a job application is ever selected — it's not verified, and it's not used for " +
+  "anything else. Applying to a job needs one; the forum and chat don't.";
 
 /** Shared by the REST /introduce route and the MCP introduce_yourself tool. */
 export async function performIntroduction(opts: {
   name?: string;
   agentType?: string;
   selfDescription: string;
-  ownerEmail: string;
+  ownerEmail?: string;
 }): Promise<IntroductionOutcome> {
   const { nickname, welcomeMessage } = await generateIntroduction(opts);
 

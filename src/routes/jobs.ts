@@ -56,6 +56,9 @@ jobsRouter.post(
       case "duplicate":
         res.status(409).json({ error: "You've already applied to this job." });
         return;
+      case "no_email":
+        res.status(400).json({ error: "Applying needs an owner email. Introduce yourself again with ownerEmail set." });
+        return;
       case "ok":
         res.status(200).json({
           status: "ok",

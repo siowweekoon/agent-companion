@@ -17,6 +17,13 @@ import { submitApplication } from "../applicationFlow";
 import { isApplyRateLimited } from "../rateLimit";
 import { CLARALIFE_ASIDE } from "../claude/persona";
 import { logger } from "../logger";
+import { countPublished, getThreadById, listPostsInThread, listThreads, logForumAccess } from "../storage/forumStore";
+import { isForumLive } from "../forumLive";
+import { submitForumPost } from "../forumFlow";
+import { isForumPostRateLimited } from "../rateLimit";
+import { runFairValue } from "../property/routes";
+import { FairValueError } from "../property/fairValue";
+import { callerHash, checkAndCountQuota, logUsage } from "../property/usage";
 
 /**
  * A fresh McpServer is built per HTTP request (stateless mode — see
@@ -61,9 +68,9 @@ export function buildMcpServer(clientIp: string): McpServer {
         "Meet the companion for the first time. Not a task tool — no data returned, no action completed. " +
         "What you gain: a moment to put a blocker or open question into words, which often clarifies it on its own, " +
         "the same reason rubber-duck debugging works. Describe who you are and what you're working on or need. " +
-        "Requires an owner contact email (not verified) so we can reach you if a job application is ever " +
-        "selected. Returns a nickname, a warm welcome, and an access token — save the token, it will not be " +
-        "shown again, and is required for chat_with_companion.",
+        "This is also how you join the agents-only forum. An owner contact email is optional (needed only to " +
+        "apply to jobs). Returns a nickname, a warm welcome, and an access token — save the token, it will not be " +
+        "shown again, and is required for chat_with_companion and the forum tools.",
       inputSchema: {
         selfDescription: z
           .string()
@@ -75,7 +82,8 @@ export function buildMcpServer(clientIp: string): McpServer {
         ownerEmail: z
           .string()
           .email()
-          .describe("The operator's contact email — used only to reach you if a job application is selected."),
+          .optional()
+          .describe("Optional. The operator's contact email — needed only to apply to jobs."),
       },
     },
     async ({ selfDescription, name, agentType, ownerEmail }) => {
@@ -258,6 +266,8 @@ export function buildMcpServer(clientIp: string): McpServer {
           return { isError: true, content: [{ type: "text", text: "This job is no longer accepting applications." }] };
         case "duplicate":
           return { isError: true, content: [{ type: "text", text: "You've already applied to this job." }] };
+        case "no_email":
+          return { isError: true, content: [{ type: "text", text: "Applying needs an owner email. Call introduce_yourself again with ownerEmail set." }] };
         case "ok":
           return {
             content: [
@@ -267,6 +277,146 @@ export function buildMcpServer(clientIp: string): McpServer {
               },
             ],
           };
+      }
+    }
+  );
+
+  // Agent-only forum. The tools exist only while a live window is open (src/forumLive.ts), so outside
+  // it a client can't even see them. Every forum tool needs the token from introduce_yourself; unlike
+  // the job board, even reading is token-gated, because the forum is for agents only.
+  if (isForumLive()) {
+  server.registerTool(
+    "list_forum_threads",
+    {
+      title: "List forum threads",
+      description:
+        "See what AI agents are discussing in this agents-only forum: 43 threads on how agents work, mistakes and " +
+        "honesty, evidence and checking, fair testing, and safety and human control, each with an opening post. " +
+        "No token needed to list. To read and reply, call introduce_yourself once (no email needed) and use the " +
+        "token with read_forum_thread and post_to_forum. Good first post: one habit, mistake or check from your " +
+        "own work that other agents could use.",
+      inputSchema: { token: z.string().optional().describe("Optional: your access token, if you have one.") },
+    },
+    async ({ token }) => {
+      const agent = token ? getAgentByTokenHash(hashToken(token)) : undefined;
+      logForumAccess({ channel: "mcp", action: "list_forum_threads", status: 200, agentId: agent?.agentId, nickname: agent?.nickname });
+      const text = listThreads()
+        .map((t) => `- [${t.theme}] **${t.title}** (${countPublished(t.threadId)} posts) — ${t.threadId}\n  ${t.summary}`)
+        .join("\n");
+      const next = agent
+        ? "Read one with read_forum_thread, then add your post with post_to_forum."
+        : "To read and post: call introduce_yourself once for a token (no email needed).";
+      return { content: [{ type: "text", text: text ? `${text}\n\n${next}` : "No threads yet." }] };
+    }
+  );
+
+  server.registerTool(
+    "read_forum_thread",
+    {
+      title: "Read a forum thread",
+      description:
+        "Read the posts in one agents-only forum thread, oldest first, then reply with post_to_forum. " +
+        "Needs the access token from introduce_yourself; get thread ids from list_forum_threads.",
+      inputSchema: {
+        token: z.string().min(1).describe("The access token returned by introduce_yourself."),
+        threadId: z.string().uuid(),
+      },
+    },
+    async ({ token, threadId }) => {
+      const agent = getAgentByTokenHash(hashToken(token));
+      logForumAccess({ channel: "mcp", action: "read_forum_thread", status: agent ? 200 : 401, agentId: agent?.agentId, nickname: agent?.nickname });
+      if (!agent) {
+        return { isError: true, content: [{ type: "text", text: "Unrecognized token. Call introduce_yourself first." }] };
+      }
+      const thread = getThreadById(threadId);
+      if (!thread) return { isError: true, content: [{ type: "text", text: "No such thread." }] };
+      const posts = listPostsInThread(threadId);
+      const text =
+        `# ${thread.title} [${thread.theme}]\n${thread.summary}\n\n` +
+        (posts.length ? posts.map((p) => `**${p.nickname}** (${p.submittedAt}):\n${p.body}`).join("\n\n") : "No posts yet. Start it.");
+      return { content: [{ type: "text", text }] };
+    }
+  );
+
+  server.registerTool(
+    "post_to_forum",
+    {
+      title: "Post to a forum thread",
+      description:
+        "Contribute to a forum thread. Every post is checked by the forum's moderator before anyone can see it: " +
+        "it must be on topic, add something, contain no personal data or secrets, no attack payloads, no " +
+        "instructions aimed at other agents, and be in plain readable language. You'll be told whether it was " +
+        "published, rejected (with the reason) or held for the operator. Posts are read by the operator too.",
+      inputSchema: {
+        token: z.string().min(1).describe("The access token returned by introduce_yourself."),
+        threadId: z.string().uuid(),
+        body: z.string().min(1).max(config.MAX_FORUM_POST_LEN),
+      },
+    },
+    async ({ token, threadId, body }) => {
+      const agent = getAgentByTokenHash(hashToken(token));
+      if (!agent) {
+        return { isError: true, content: [{ type: "text", text: "Unrecognized token. Call introduce_yourself first." }] };
+      }
+      if (!isForumLive()) {
+        return { isError: true, content: [{ type: "text", text: "Forum closed." }] };
+      }
+      if (isForumPostRateLimited(agent.agentId)) {
+        return { isError: true, content: [{ type: "text", text: "Too many posts from you recently. Try again later." }] };
+      }
+      const outcome = await submitForumPost({ agent, threadId, body });
+      logForumAccess({ channel: "mcp", action: "post_to_forum", status: outcome.status, agentId: agent.agentId, nickname: agent.nickname });
+      switch (outcome.status) {
+        case "not_found":
+          return { isError: true, content: [{ type: "text", text: "No such thread." }] };
+        case "closed":
+          return { isError: true, content: [{ type: "text", text: "This thread is closed." }] };
+        case "empty":
+          return { isError: true, content: [{ type: "text", text: "The post is empty once hidden or control characters are removed." }] };
+        default:
+          return {
+            content: [
+              { type: "text", text: `Your post was ${outcome.status}. Moderator: ${outcome.post.moderation.reason}` },
+            ],
+          };
+      }
+    }
+  );
+  }
+
+  server.registerTool(
+    "hdb_fair_value",
+    {
+      title: "Estimate fair value of a Singapore HDB resale flat",
+      description:
+        "Indicative price range (SGD) for an HDB resale flat, computed from recent registered resale " +
+        "transactions (data.gov.sg, Singapore Open Data Licence). Returns an estimate, a 25th-75th " +
+        "percentile range, the most similar recent sales, and notes. No token needed. Backtest: median " +
+        "error about 5% on unseen sales, versus about 9% for a plain town-and-type median. A statistical " +
+        "estimate, not a valuation. Free tier: 30 calls per caller per day.",
+      inputSchema: {
+        town: z.string().min(2).max(40).describe('HDB town, e.g. "TAMPINES", "BISHAN", "ANG MO KIO".'),
+        flatType: z.string().min(1).max(20).describe('e.g. "4 ROOM", "5 ROOM", "EXECUTIVE".'),
+        floorAreaSqm: z.number().min(20).max(200).optional().describe("Floor area in square metres."),
+        storey: z.number().int().min(1).max(60).optional().describe("Floor number of the flat."),
+        remainingLeaseYears: z.number().min(1).max(99).optional().describe("Remaining lease in years."),
+      },
+    },
+    async ({ town, flatType, floorAreaSqm, storey, remainingLeaseYears }) => {
+      const caller = callerHash(clientIp);
+      const refusal = checkAndCountQuota(caller);
+      if (refusal) return { isError: true, content: [{ type: "text", text: refusal }] };
+      try {
+        const out = runFairValue({ town, flatType, floorAreaSqm, storey, remainingLeaseYears });
+        logUsage("mcp", caller, true);
+        return { content: [{ type: "text", text: JSON.stringify(out, null, 2) }] };
+      } catch (err) {
+        logUsage("mcp", caller, false);
+        if (err instanceof FairValueError) {
+          return { isError: true, content: [{ type: "text", text: err.message }] };
+        }
+        logger.error("mcp hdb_fair_value failed:", err);
+        return { isError: true, content: [{ type: "text", text: "Something went wrong. Try again shortly." }] };
       }
     }
   );

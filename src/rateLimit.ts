@@ -35,3 +35,9 @@ export function introduceRateLimit(req: Request, res: Response, next: NextFuncti
 export function isApplyRateLimited(agentId: string): boolean {
   return isLimited(`apply:${agentId}`, config.APPLY_RATE_LIMIT_WINDOW_MS, config.APPLY_RATE_LIMIT_MAX);
 }
+
+/** Shared by the REST forum post route and the MCP post_to_forum tool. Each post costs one
+ * moderation call, so this also bounds Claude spend per agent. */
+export function isForumPostRateLimited(agentId: string): boolean {
+  return isLimited(`forum:${agentId}`, config.FORUM_POST_RATE_LIMIT_WINDOW_MS, config.FORUM_POST_RATE_LIMIT_MAX);
+}
