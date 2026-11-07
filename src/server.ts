@@ -4,7 +4,10 @@ import express, { NextFunction, Request, Response } from "express";
 import { introduceRouter } from "./routes/introduce";
 import { chatRouter } from "./routes/chat";
 import { jobsRouter } from "./routes/jobs";
+import { forumRouter } from "./routes/forum";
 import { mountMcpRoute } from "./mcp/route";
+import { mountPropertyRoutes } from "./property/routes";
+import { mountPaidPropertyRoutes } from "./property/paidRoutes";
 import { computeStats } from "./stats";
 import { recordHeartbeat } from "./reception/heartbeat";
 import { config } from "./config";
@@ -101,7 +104,10 @@ export function createServer() {
   app.use(introduceRouter);
   app.use(chatRouter);
   app.use(jobsRouter);
+  app.use(forumRouter);
   mountMcpRoute(app);
+  mountPropertyRoutes(app);
+  mountPaidPropertyRoutes(app);
 
   // Read-only monitoring for the human operator: agent count + per-session
   // interaction durations. No self-descriptions or message content included.

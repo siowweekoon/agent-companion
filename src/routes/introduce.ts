@@ -12,7 +12,8 @@ const bodySchema = z.object({
   ownerEmail: z
     .string()
     .email()
-    .describe("The operator's contact email — used only to reach you if a job application is selected."),
+    .optional()
+    .describe("Optional. The operator's contact email — needed only to apply to jobs, used only to reach you if selected."),
 });
 
 export const introduceRouter = Router();

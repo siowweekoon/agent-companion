@@ -4,6 +4,7 @@ import { logger } from "./logger";
 import { ensureDir } from "./storage/paths";
 import { loadAllAgents } from "./storage/agentStore";
 import { loadAllJobs } from "./storage/jobStore";
+import { loadAllForum } from "./storage/forumStore";
 import { loadOpenState, isOpen } from "./reception/openState";
 import { startHeartbeatWatchdog } from "./reception/heartbeat";
 import { createServer } from "./server";
@@ -13,6 +14,7 @@ import { startExtractionScheduler } from "./needsExtraction/scheduler";
 ensureDir(config.DATA_DIR);
 loadAllAgents();
 loadAllJobs();
+loadAllForum();
 loadOpenState();
 
 const app = createServer();

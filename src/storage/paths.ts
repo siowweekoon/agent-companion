@@ -79,6 +79,29 @@ export function applicationPath(jobId: string, agentId: string): string {
   return path.join(applicationsDir(jobId), `${agentId}.json`);
 }
 
+export function forumThreadsDir(): string {
+  return resolveWithinDataDir("forum", "threads");
+}
+
+export function forumThreadPath(threadId: string): string {
+  if (!isValidId(threadId)) throw new Error(`Invalid threadId: ${threadId}`);
+  return path.join(forumThreadsDir(), `${threadId}.json`);
+}
+
+export function forumPostsDir(threadId: string): string {
+  if (!isValidId(threadId)) throw new Error(`Invalid threadId: ${threadId}`);
+  return resolveWithinDataDir("forum", "posts", threadId);
+}
+
+export function forumPostPath(threadId: string, postId: string): string {
+  if (!isValidId(postId)) throw new Error(`Invalid postId: ${postId}`);
+  return path.join(forumPostsDir(threadId), `${postId}.json`);
+}
+
+export function forumAccessLogPath(): string {
+  return resolveWithinDataDir("forum", "access.jsonl");
+}
+
 export function masterApplicationsPath(): string {
   return resolveWithinDataDir("master-applications.md");
 }

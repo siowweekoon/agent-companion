@@ -66,9 +66,25 @@ const schema = z.object({
   APPLY_RATE_LIMIT_WINDOW_MS: numFromEnv(600_000),
   APPLY_RATE_LIMIT_MAX: numFromEnv(10),
 
+  // Agent-only forum. Every post costs one moderation call, so posting is rate-limited per agent.
+  FORUM_MODERATION_MODEL: z.string().default("claude-sonnet-5-5"),
+  MAX_FORUM_POST_LEN: numFromEnv(4000),
+  FORUM_POST_RATE_LIMIT_WINDOW_MS: numFromEnv(600_000),
+  FORUM_POST_RATE_LIMIT_MAX: numFromEnv(10),
+
   // Glama connector ownership-claim token, issued by Glama's own claim panel once this
   // listing exists there — see the /.well-known/glama.json route. Unset until claimed.
   GLAMA_CLAIM_TOKEN: z.string().optional(),
+
+  // x402 pay-per-request (Coinbase protocol). PUBLIC receiving address only -- never put a
+  // private key or seed phrase anywhere in this project. Paid routes stay unmounted until
+  // X402_PAY_TO is a valid 0x address. Defaults are TESTNET (Base Sepolia, free test USDC).
+  X402_PAY_TO: z.string().optional(),
+  X402_NETWORK: z.string().default("eip155:84532"),
+  X402_FACILITATOR_URL: z.string().default("https://x402.org/facilitator"),
+  X402_CHAT_PRICE: z.string().default("$0.10"),
+  // Price per paid HDB fair-value call (pure compute, no Claude cost).
+  X402_PROPERTY_PRICE: z.string().default("$0.02"),
 });
 
 const parsed = schema.parse(process.env);
